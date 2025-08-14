@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>URL Shortener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f0f4f8;
+        }
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: #1976d2;
+            color: #fff;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            margin-top: 50px;
+            position: relative;
+        }
+        form {
+            display: flex;
+        }
+        input[type=url] {
+            width: 300px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px 0 0 5px;
+            outline: none;
+        }
+        input[type=submit] {
+            padding: 10px 20px;
+            background: #1976d2;
+            color: #fff;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        input[type=submit]:hover {
+            background: #1565c0;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+        a {
+            color: #1976d2;
+            text-decoration: none;
+            word-break: break-word;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Side panel for links */
+        .sidepanel {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            right: 0;
+            background-color: #fff;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+            overflow-y: auto;
+            transition: width 0.4s ease;
+            padding-top: 60px;
+            max-width: 90%; /* prevents too wide on small screens */
+        }
+        .sidepanel h3 {
+            padding-left: 20px;
+            color: #1976d2;
+        }
+        .sidepanel a.closebtn {
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            font-size: 30px;
+            text-decoration: none;
+            color: #1976d2;
+        }
+        .sidepanel table {
+            width: 100%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            table-layout: fixed; /* ensures even column sizes */
+        }
+        .sidepanel th, .sidepanel td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+            word-break: break-word;
+        }
+        .sidepanel th {
+            background: #1976d2;
+            color: #fff;
+        }
+        .openbtn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .openbtn:hover {
+            background-color: #1565c0;
+        }
+        .btn-copy, .btn-delete {
+            padding: 5px 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: #fff;
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        .btn-copy { background-color: #4caf50; }
+        .btn-copy:hover { background-color: #388e3c; }
+        .btn-delete { background-color: #e53935; }
+        .btn-delete:hover { background-color: #b71c1c; }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .sidepanel {
+                max-width: 100%;
+            }
+            .openbtn {
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+            }
+            input[type=url] {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Professional URL Shortener</h2>
+    </div>
+
+    <button class="openbtn" onclick="openNav()">View All Links</button>
+
+    <div class="container">
+        <form method="POST">
+            {% csrf_token %}
+            <input type="url" name="original_url" placeholder="Enter your URL..." required>
+            <input type="submit" value="Shorten">
+        </form>
+    </div>
+
+    {% if short_url %}
+    <div class="result">
+        Shortened URL: <a href="{{ short_url }}" target="_blank">{{ short_url }}</a>
+    </div>
+    {% endif %}
+
+    <!-- Side Panel -->
+    <div id="mySidepanel" class="sidepanel">
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+        <h3>Saved URLs</h3>
+        {% if urls %}
+        <table>
+            <tr>
+                <th style="width:40%;">Original URL</th>
+                <th style="width:30%;">Short URL</th>
+                <th style="width:15%;">Actions</th>
+                <th style="width:15%;">Created At</th>
+            </tr>
+            {% for url in urls %}
+            <tr id="row-{{ url.id }}">
+                <td><a href="{{ url.original_url }}" target="_blank">{{ url.original_url }}</a></td>
+                <td>
+                    <a href="http://127.0.0.1:8000/{{ url.short_code }}" target="_blank">
+                        http://127.0.0.1:8000/{{ url.short_code }}
+                    </a>
+                    <button class="btn-copy" onclick="copyLink('{{ url.short_code }}')">Copy</button>
+                </td>
+                <td>
+                    <button class="btn-delete" onclick="deleteLink('{{ url.id }}')">Delete</button>
+                </td>
+                <td>{{ url.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="padding-left:20px;">No URLs saved yet.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        function openNav() {
+            if (window.innerWidth < 768) {
+                document.getElementById("mySidepanel").style.width = "100%"; // full width for mobile
+            } else {
+                document.getElementById("mySidepanel").style.width = "700px"; // more space for desktop
+            }
+        }
+        function closeNav() {
+            document.getElementById("mySidepanel").style.width = "0";
+        }
+
+        function copyLink(code) {
+            const shortUrl = `http://127.0.0.1:8000/${code}`;
+            navigator.clipboard.writeText(shortUrl).then(() => {
+                alert("Copied: " + shortUrl);
+            });
+        }
+
+        function deleteLink(id) {
+            if(confirm("Are you sure you want to delete this URL?")) {
+                fetch(`/delete/${id}/`, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": "{{ csrf_token }}",
+                    }
+                }).then(() => {
+                    const row = document.getElementById(`row-${id}`);
+                    if(row) row.remove();
+                });
+            }
+        }
+    </script>
+</body>
+</html>

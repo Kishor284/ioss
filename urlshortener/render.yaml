@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: urlshortener
+    env: docker
+    plan: free
+    dockerfilePath: ./myproject/Dockerfile
+    dockerContext: ./myproject
+    envVars:
+      - key: PORT
+        value: 8000
